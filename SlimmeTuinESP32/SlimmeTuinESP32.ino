@@ -171,9 +171,9 @@ String processor(const String& var) {
   if (var == "LUCHT") return String(luchtvochtigheid, 1);
   if (var == "BODEM") return String(bodemvochtigheid, 1);
 
-  if (var == "ALARM_TEMP") return alarmTemp ? "<span class='alarm'>(⚠️ Te warm!)</span>" : "";
-  if (var == "ALARM_LUCHT") return alarmLucht ? "<span class='alarm'>(⚠️ Te droog!)</span>" : "";
-  if (var == "ALARM_BODEM") return alarmBodem ? "<span class='alarm'>(⚠️ Bodem te droog!)</span>" : "";
+  if (var == "ALARM_TEMP") return alarmTemp ? "<span class='alarm'>(Te warm!)</span>" : "";
+  if (var == "ALARM_LUCHT") return alarmLucht ? "<span class='alarm'>(Te droog!)</span>" : "";
+  if (var == "ALARM_BODEM") return alarmBodem ? "<span class='alarm'>(Bodem te droog!)</span>" : "";
 
   if (var == "LOG") {
     String logHtml = "";
