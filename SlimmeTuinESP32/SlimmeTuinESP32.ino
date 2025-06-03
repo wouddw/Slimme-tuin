@@ -1,8 +1,9 @@
-#include <WiFi.h>
-#include <WebServer.h>
-#include "Sensor.h" // === File en oprdracht van Woud De Waegenaere ===
-#include "Actuator.h" // === File en oprdracht van Lars Ysebaert ===
+#include <WiFi.h>       // WiFi-functionaliteit voor de ESP32
+#include <WebServer.h>  // Webserverbibliotheek voor ESP32
+#include "Sensor.h"     // === File en oprdracht van Woud De Waegenaere ===
+#include "Actuator.h"   // === File en oprdracht van Lars Ysebaert ===
 
+// === Objecten aanmaken voor sensor en actuatorfunctionaliteit ===
 Sensor sensor;
 Actuator actuator;
 
@@ -13,7 +14,7 @@ const char* password = "Wifi0104";
 // === Webserver op poort 80 ===
 WebServer server(80);
 
-// === Simulatie van sensorwaarden ===
+// === Sensorwaarden (worden overschreven met echte meetwaarden) ===
 float temperatuur = 22.3;
 float luchtvochtigheid = 57.2;
 float bodemvochtigheid = 35.0;
@@ -27,7 +28,7 @@ bool alarmTemp = false;
 bool alarmLucht = false;
 bool alarmBodem = false;
 
-// === HTML-pagina met CSS en placeholders ===
+// === HTML-dashboardpagina met placeholders voor sensordata ===
 String pagina = R"rawliteral(
 <!DOCTYPE html><html>
 <head>
@@ -119,6 +120,20 @@ String pagina = R"rawliteral(
       border-bottom: 1px solid #ddd;
       padding-bottom: 0.3rem;
     }
+    .pompstatus {
+      margin-top: 2rem;
+      text-align: center;
+      font-size: 1.2rem;
+      color: #333;
+    }
+    .status-aan {
+      color: green;
+      font-weight: bold;
+    }
+    .status-uit {
+      color: red;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
@@ -149,6 +164,11 @@ String pagina = R"rawliteral(
       <a href="/ledRood"><button>LED Rood</button></a>
       <a href="/ledGroen"><button>LED Groen</button></a>
     </div>
+
+    <div class="pompstatus">
+      <h3>Pompstatus:</h3>
+      %POMP_STATUS%
+    </div>
   </div>
 
   <div class="logboek">
@@ -165,7 +185,7 @@ void voegLogToe(String bericht) {
   logboek[logIndex++] = bericht;
 }
 
-// === Processor: vervangt placeholders in HTML ===
+// === Verwerk HTML-placeholders tot echte waarden ===
 String processor(const String& var) {
   if (var == "TEMP") return String(temperatuur, 1);
   if (var == "LUCHT") return String(luchtvochtigheid, 1);
@@ -185,14 +205,21 @@ String processor(const String& var) {
     return logHtml;
   }
 
+  if (var == "POMP_STATUS") {
+    if (actuator.isPompActief()) {
+      return "<span class='status-aan'>🟢 AAN</span>";
+    } else {
+      return "<span class='status-uit'>🔴 UIT</span>";
+    }
+  }
   return "";
 }
 
 
-// === Setup ===
+// === Setup wordt eenmaal uitgevoerd bij opstart ESP32 ===
 void setup() {
-  Serial.begin(115200);
-  WiFi.begin(ssid, password);
+  Serial.begin(115200);         // Seriële monitor starten
+  WiFi.begin(ssid, password);   // Verbinding maken met WiFi
   Serial.print("Verbinding maken met WiFi");
   while (WiFi.status() != WL_CONNECTED) {
     delay(500); Serial.print(".");
@@ -206,6 +233,7 @@ void setup() {
     alarmLucht = luchtvochtigheid < 40.0;
     alarmBodem = bodemvochtigheid < 30.0;
 
+    // Voeg meldingen toe aan het logboek bij overschrijding
     if (alarmTemp) voegLogToe("Temperatuur alarm: " + String(temperatuur));
     if (alarmLucht) voegLogToe("Luchtvochtigheid alarm: " + String(luchtvochtigheid));
     if (alarmBodem) voegLogToe("Bodemvochtigheid alarm: " + String(bodemvochtigheid));
@@ -219,10 +247,11 @@ void setup() {
     html.replace("%ALARM_LUCHT%", processor("ALARM_LUCHT"));
     html.replace("%ALARM_BODEM%", processor("ALARM_BODEM"));
     html.replace("%LOG%", processor("LOG"));
+    html.replace("%POMP_STATUS%", processor("POMP_STATUS"));
     server.send(200, "text/html", html);
   });
 
-  // === Actieknoppen met logging ===
+  // === Handmatige besturing via webknoppen ===
   server.on("/pompAan", HTTP_GET, []() {
     actuator.start_pomp();
     voegLogToe("Pomp handmatig AAN");
@@ -238,48 +267,47 @@ void setup() {
   });
 
   server.on("/ledRood", HTTP_GET, []() {
+    actuator.led_uit();
     actuator.led_aan("rood");
-    actuator.led_uit("groen");
     voegLogToe("LED op ROOD gezet");
     server.sendHeader("Location", "/");
     server.send(303);
   });
 
   server.on("/ledGroen", HTTP_GET, []() {
+    actuator.led_uit();
     actuator.led_aan("groen");
-    actuator.led_uit("rood");
     voegLogToe("LED op GROEN gezet");
     server.sendHeader("Location", "/");
     server.send(303);
   });
 
-  server.begin();
+  server.begin();    // Start de webserver
   Serial.println("Webserver gestart!");
+  actuator.begin();  // Initieer de pinnen in de actuatorklasse
 }
 
+// === Loop wordt voortdurend uitgevoerd na setup() ===
 void loop() {
-  server.handleClient();
+  server.handleClient();  // Behandel inkomende webverzoeken
 
   static unsigned long vorigeMillis = 0;
   if (millis() - vorigeMillis > 5000) {
-    // Sensorwaarden uitlezen
+    // === Sensorwaarden elke 5 seconden verversen ===
     temperatuur = sensor.getTemperatuur();
     luchtvochtigheid = sensor.getLuchtvochtigheid();
     bodemvochtigheid = sensor.getBodemvochtigheid();
 
-    // === LED-logica ===
+    // === LED-kleur aanpassen aan toestand ===
     if (bodemvochtigheid < 20 || temperatuur > 35 || luchtvochtigheid > 90) {
-      actuator.led_aan("rood");
-      actuator.led_uit("groen");
-      actuator.led_uit("blauw");
+      actuator.led_uit();
+      actuator.led_aan("rood");   // Ernstige situatie
     } else if (bodemvochtigheid < 30 || temperatuur > 30 || luchtvochtigheid > 80) {
-      actuator.led_aan("blauw");
-      actuator.led_uit("groen");
-      actuator.led_uit("rood");
+      actuator.led_uit();
+      actuator.led_aan("blauw");  // Waarschuwing
     } else {
-      actuator.led_aan("groen");
-      actuator.led_uit("rood");
-      actuator.led_uit("blauw");
+      actuator.led_uit();
+      actuator.led_aan("groen");  // Alles in orde
     }
 
     // === Alleen automatisch pomp starten als hij NIET manueel aanstaat ===
