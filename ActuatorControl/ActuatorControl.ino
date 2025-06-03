@@ -2,31 +2,40 @@
 
 Actuator actuator;
 
-
 void setup() {
-    actuator.begin();
+    actuator.begin(); // init alles (leds + pomp)
+    Serial.begin(9600); // serial monitor aanzetten om status te tonen
 }
 
 void loop() {
     // LED voorbeelden
-    actuator.led_aan("rood");
+    actuator.led_aan("rood");  // rood aan
     delay(1000);
 
-    actuator.led_aan("groen");
+    actuator.led_aan("groen"); // groen aan
     delay(1000);
 
-    actuator.led_aan("geel"); // rood + groen
+    actuator.led_aan("geel");  // geel = rood + groen
     delay(1000);
 
-    actuator.led_uit();
+    actuator.led_uit();        // alles uit
     delay(500);
 
-    // Pomp voorbeelden
-    actuator.start_pomp();
+    // Pomp starten
+    actuator.start_pomp();     
     delay(2000);
-    actuator.stop_pomp();
+
+    // Checken of pomp actief is
+    if (actuator.isPompActief()) {
+        Serial.println("Pomp is AAN");
+    } else {
+        Serial.println("Pomp is UIT");
+    }
+
+    actuator.stop_pomp();      
     delay(500);
 
-    actuator.draaiVoor_pomp(3); // 3 seconden
-    delay(1000); // Wacht even voor herhaling
+    // pomp draaien voor 3 seconden
+    actuator.draaiVoor_pomp(3); 
+    delay(1000);
 }
