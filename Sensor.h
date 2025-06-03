@@ -12,5 +12,7 @@ public:
     void begin(); //initialiseer sensor
     float getTemperatuur(); //temperatuur 'getten'
     float getLuchtvochtigheid(); //luchtvochtigheid 'getten'
+    int getBodemvochtigheid(); //bodemvochtigheid 'getten'
 };
+
 #endif
