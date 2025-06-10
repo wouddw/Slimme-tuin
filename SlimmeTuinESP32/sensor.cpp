@@ -29,5 +29,8 @@ int Sensor::getBodemvochtigheid() {
         isInit = true;
     }
 
-    return analogRead(AOUT_PIN);
+    int waarde = analogRead(AOUT_PIN);
+    int vochtigheid = map(waarde, 4095, 1500, 0, 100);  // pas aan op basis van sensor
+    vochtigheid = constrain(vochtigheid, 0, 100);
+    return vochtigheid;
 }

@@ -206,19 +206,23 @@ String processor(const String& var) {
   }
 
   if (var == "POMP_STATUS") {
-    if (actuator.isPompActief()) {
-      return "<span class='status-aan'>🟢 AAN</span>";
-    } else {
-      return "<span class='status-uit'>🔴 UIT</span>";
-    }
+    return actuator.isPompActief() ? "<span class='status-aan'>🟢 AAN</span>" : "<span class='status-uit'>🔴 UIT</span>";
   }
   return "";
 }
 
 
+
 // === Setup wordt eenmaal uitgevoerd bij opstart ESP32 ===
 void setup() {
   Serial.begin(115200);         // Seriële monitor starten
+
+  actuator.begin();  // Initieer de pinnen in de actuatorklasse
+  Serial.println("Actuator klaar");
+
+  sensor.begin();
+  Serial.println("Sensor klaar");
+
   WiFi.begin(ssid, password);   // Verbinding maken met WiFi
   Serial.print("Verbinding maken met WiFi");
   while (WiFi.status() != WL_CONNECTED) {
@@ -284,12 +288,13 @@ void setup() {
 
   server.begin();    // Start de webserver
   Serial.println("Webserver gestart!");
-  actuator.begin();  // Initieer de pinnen in de actuatorklasse
 }
 
 // === Loop wordt voortdurend uitgevoerd na setup() ===
 void loop() {
   server.handleClient();  // Behandel inkomende webverzoeken
+
+  actuator.update();       // ✅ Check of pomp moet worden gestopt
 
   static unsigned long vorigeMillis = 0;
   if (millis() - vorigeMillis > 5000) {

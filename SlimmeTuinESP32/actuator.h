@@ -2,35 +2,28 @@
 #define ACTUATOR_H
 
 #include <Arduino.h>
-#include <string>
 
 class Actuator {
-private:
-    // Pump config
-    const int POMP_PIN = 19;
-    bool pompStatus;
-    
-    // RGB LED pins
-    const int ROOD_PIN = 26;
-    const int GROEN_PIN = 27;
-    const int BLAUW_PIN = 25;
-
 public:
-    // default contstructor
-    Actuator();
     void begin();
-    
-    // Pump functions, start, stop draaiVoor
     void start_pomp();
     void stop_pomp();
-    void draaiVoor_pomp(int seconden); // run pump for x seconds
-    
-    // LED functions
-    void led_aan(std::string kleur); // turn LED on red, green, yellow
-    void led_uit();                  // turn all the LED's off
+    void draaiVoor_pomp(int seconden);
+    void update();             // moet in loop() worden aangeroepen
+    void led_aan(String kleur);
+    void led_uit();
+    bool isPompActief();       // status opvragen voor HTML
 
-    bool isPompActief();  // Geeft true terug als pomp actief is
+private:
+    const int pompPin = 5;
+    const int ROOD_PIN = 12;
+    const int GROEN_PIN = 13;
+    const int BLAUW_PIN = 14;
 
+    bool pompDraait = false;
+    bool pompHandmatig = false;
+    unsigned long pompStartTijd = 0;
+    unsigned long pompDuur = 0;
 };
 
 #endif
